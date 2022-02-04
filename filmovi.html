@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <title>Cineplexx</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Cineplexx</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item active">
+                    <a class="nav-link" href="index.html">Početna</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="bioskopi.html">Bioskopi</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="filmovi.html">Filmovi</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="kontakt.html">Kontakt</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="row" style="background-color: rgba(225, 225, 208, 0.5);">
+
+        
+
+        <div class="col-md-4">
+
+            <button id="btn-pretraga" class="btn btn-warning btn-block" style="background-color:  lightblue; border: 1px solid white;">Pronadji film</button>
+
+            <div>
+
+                <input type="text" id="myInput" onkeyup="myFunction()" placeholder="Pretrazi po nazivu" title="Type in a name">
+        
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <button id="btn-sortiraj" class="btn btn-normal" style="background-color:  teal; border: 1px solid white;" onclick="sortTable()">Sortiraj</button>
+
+        </div>
+
+
+    </div>
+
+    <div>
+        <table id="filmovi" class="table display">
+            <tr>
+                <th scope="col">Rb</th>
+                <th scope="col">Naziv</th>
+                <th scope="col">Kategorija</th>
+                <th scope="col">Broj minuta</th>
+            </tr>
+            <tbody id="filmovi_podaci"></tbody>
+
+        </table>
+
+
+    </div>
+    <div class="formaZaDodavanje">
+        <h1>Dodaj film</h1>
+        <form class="mt-5">
+            <div class="form-group">
+                <input type="text" class="form-control" id="naziv" placeholder="Naziv">
+            </div>
+            <div class="form-group">
+                <select class="form-control" id="novaKategorija">
+
+                </select>
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" type="number" id="brojMinuta" placeholder="Broj minuta">
+            </div>
+            <div class="form-group">
+                <button class="btn btn-primary" id="dodajFilm">Dodaj film</button>
+            </div>
+        </form>
+    </div>
+
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    
+    <script>
+        $(document).ready(function () {
+            napuniTabelu();
+            napuniKategorije("novaKategorija");
+            $("#dodajFilm").click(function (e) {
+                e.preventDefault();
+                $.post("filmovi.php", {
+                    metoda: "dodaj",
+                    naziv: $("#naziv").val(),
+                    kategorija: $("#novaKategorija").val(),
+                    broj_minuta: $("#brojMinuta").val()
+                }, function (data) {
+                    alert(data);
+                    napuniTabelu();
+
+                })
+            })
+        });
+        function napuniTabelu() {
+            $.getJSON("filmovi.php", { metoda: "vrati sve" }, function (data) {
+                console.log(data);
+                if (data.status !== "ok") {
+                    alert(data.status);
+                    return;
+                }
+                let i = 0;
+                $("#filmovi_podaci").html("");
+                for (let film of data.data) {
+                    $("#filmovi_podaci").append(`<tr>
+                        <th scope="row">${++i}.</th>
+                    <td contentEditable=true id="${film.id}Naziv" >${film.naziv} </td>
+                    <td contentEditable=true ><select class="form-control" id="${film.id}Kat" ></td>
+                    <td contentEditable=true id="${film.id}minuti" >${film.broj_minuta} </td>
+                    <td>
+                        <button onClick="izmeniFilm(${film.id})">Izmeni</button>
+                        <button onClick="obrisiFilm(${film.id})" >Obrisi</button>
+                    </td>
+                </tr>`);
+                    napuniKategorije(`${film.id}Kat`, film.kat_id);
+                }
+            });
+
+        }
+        function napuniKategorije(element, value = undefined) {
+            $.getJSON("filmovi.php", { metoda: "vrati kategorije" }, function (data) {
+                if (data.status !== "ok") {
+                    alert(data.status);
+                    return;
+                }
+                $("#" + element).html(``);
+
+                for (let kat of data.data) {
+                    $("#" + element).append(`<option value='${kat.id}' > ${kat.naziv} </option>`);
+                }
+                if (value) {
+                    $("#" + element).val(value);
+                }
+            })
+        }
+        function obrisiFilm(id) {
+            $.post("filmovi.php", { metoda: "obrisi", id: id }, function (data) {
+                napuniTabelu();
+            })
+        }
+        function izmeniFilm(id) {
+            let naziv = $(`#${id}Naziv`).text();
+            let kategorija = $(`#${id}Kat`).val();
+            let brojMinuta = $(`#${id}minuti`).text();
+            console.log({
+                metoda: "izmeni",
+                id: id,
+                naziv: naziv,
+                kategorija: kategorija,
+                broj_minuta: brojMinuta
+            });
+            $.post("filmovi.php", {
+                metoda: "izmeni",
+                id: id,
+                naziv: naziv,
+                kategorija: kategorija,
+                broj_minuta: brojMinuta
+            }, function (data) {
+                console.log(data);
+                napuniTabelu();
+            })
+        }
+
+
+        function myFunction() {
+
+var input, filter, table, tr, td, i, txtValue;
+
+input = document.getElementById("myInput");
+
+filter = input.value.toUpperCase();
+
+table = document.getElementById("filmovi");
+
+tr = table.getElementsByTagName("tr");
+
+for (i = 0; i < tr.length; i++) {
+
+  td = tr[i].getElementsByTagName("td")[0];
+
+  if (td) {
+
+    txtValue = td.textContent || td.innerText;
+
+    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+
+      tr[i].style.display = "";
+
+    } else {
+
+      tr[i].style.display = "none";
+
+    }
+
+  }      
+
+}
+
+}
+    
+    function sortTable() {
+             var table, rows, switching, i, x, y, shouldSwitch;
+                table = document.getElementById("filmovi");
+                switching = true;
+    
+    while (switching) {
+        
+        switching = false;
+        rows = table.rows;
+        
+        for (i = 1; i < (rows.length - 1); i++) {
+        
+        shouldSwitch = false;
+        
+        x = rows[i].getElementsByTagName("TD")[0];
+        y = rows[i + 1].getElementsByTagName("TD")[0];
+        
+        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+            
+            shouldSwitch = true;
+            break;
+        }
+        }
+        if (shouldSwitch) {
+        
+        rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+        switching = true;
+        }
+    }
+    }
+
+    </script>
+</body>
+
+</html>

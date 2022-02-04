@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+
+    <title>Cineplexx</title>
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Cineplexx</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item active">
+                    <a class="nav-link" href="index.html">Početna</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="bioskopi.html">Bioskopi</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="filmovi.html">Filmovi</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="kontakt.html">Kontakt</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div id="bioskopiWrapper">
+        <label id="izabraniBioskop" hidden=true></label>
+        <table class="table">
+            <tr>
+                <th scope="col">Rb</th>
+                <th scope="col">Naziv</th>
+                <th scope="col">Adresa</th>
+            </tr>
+            <tbody id="bioskopi">
+
+            </tbody>
+
+        </table>
+    </div>
+    <div id="filmoviWrapper" hidden="true">
+
+        <table id="filmovi" class="table" hidden="true">
+            <tr>
+                <th scope="col">Rb</th>
+                <th scope="col">Naziv</th>
+                <th scope="col">Broj projekcija</th>
+            </tr>
+            <tbody id="filmoviBody"></tbody>
+        </table>
+        <div id="dodavanjeNoveVeze" hidden=true>
+            <select id="komboSaFilmovima" class="form-control"></select>
+            <input class="form-control" type="text" id="brojProjekcija" placeholder="Broj projekcija" />
+            <button id="dodajVezu">Dodaj film u bioskop</button>
+        </div>
+    </div>
+    <div id="noviBioskop">
+        <h1>Dodaj bioskop</h1>
+        <form class="mt-5">
+            <div class="form-group">
+                <input type="text" class="form-control" id="nazivBioskopa" placeholder="Naziv">
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" id="adresaBioskopa" placeholder="Adresa">
+            </div>
+            <div class="form-group">
+                <button class="btn btn-primary" id="dodajBioskop">Dodaj bioskop</button>
+            </div>
+        </form>
+
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            napuniBioskope();
+            $("#dodajBioskop").click(function (e) {
+                e.preventDefault();
+                $.post("bioskopi.php", {
+                    metoda: "dodaj",
+                    naziv: $("#nazivBioskopa").val(),
+                    adresa: $("#adresaBioskopa").val()
+                }, function (data) {
+                    if (data !== "ok") {
+                        alert(data);
+                    }
+                    napuniBioskope();
+                })
+            })
+            $("#dodajVezu").click(dodajVezuKlik);
+        });
+
+        function napuniBioskope() {
+            $.getJSON("bioskopi.php", { metoda: "vratiSve" }, function (data) {
+                console.log(data);
+                if (data.status !== "ok") {
+                    alert(data.status);
+                    return;
+                }
+                $("#bioskopi").html("");
+                let i = 0;
+                for (let bioskop of data.data) {
+                    $("#bioskopi").append(`<tr>
+                        <th>${++i}</th>
+                        <td contentEditable=true id="${bioskop.id}Naziv">${bioskop.naziv}</td>
+                        <td contentEditable=true id="${bioskop.id}Adresa" >${bioskop.adresa}</td>
+                        <td>
+                            <button onClick="prikaziFilmove(${bioskop.id})">Vidi sve filmove</button>
+                            <button onClick="izmeniBioskop(${bioskop.id})">Izmeni</button>
+                            <button onClick="obrisiBioskop(${bioskop.id})">Obrisi</button>
+                        </td>
+                    </tr>`)
+                }
+            })
+        }
+        function izmeniBioskop(id) {
+            let naziv = $(`#${id}Naziv`).text();
+            let adresa = $(`#${id}Adresa`).text();
+            $.post("bioskopi.php", {
+                metoda: "izmeni",
+                id: id,
+                naziv: naziv,
+                adresa: adresa
+            }, function (data) {
+                if (data !== "ok") {
+                    alert(data);
+                }
+                napuniBioskope();
+            })
+        }
+        function obrisiBioskop(id) {
+            $.post("bioskopi.php", { metoda: "obrisi", id: id }, function (data) {
+                if (data !== "ok") {
+                    alert(data);
+                }
+                napuniBioskope();
+            })
+        }
+        function prikaziFilmove(id) {
+            $.getJSON("filmovi.php", { metoda: "vrati iz bioskopa", bioskop: id }, function (data) {
+                console.log(data);
+                if (data.status !== "ok") {
+                    alert(data.status);
+                    return;
+                }
+
+                let i = 0;
+                $("#filmovi").attr("hidden", false);
+                $("#filmoviWrapper").attr("hidden", false);
+                $("#filmoviBody").html("");
+                for (let film of data.data) {
+                    $("#filmoviBody").append(`
+                        <tr>
+                            <td>${++i}.</td>
+                            <td>${film.naziv}</td>
+                            <td>${film.brojProjekcija}</td>
+                            <td>
+                                <button onClick="obrisiVezu(${id},${film.id})"> Obrisi</button>
+                            </td>
+                        </tr>
+                    `);
+                }
+                $("#izabraniBioskop").val(id);
+                napuniKomboSaFilmovima(id);
+
+            })
+        }
+        function napuniKomboSaFilmovima(bioskop) {
+            $.getJSON("filmovi.php", { metoda: "vrati sve" }, function (data) {
+                console.log(data);
+                if (data.status !== "ok") {
+                    alert(data.status);
+                    return;
+                }
+                $("#dodavanjeNoveVeze").attr("hidden", false);
+                $("#komboSaFilmovima").html("");
+                for (let film of data.data) {
+                    $("#komboSaFilmovima").append(`<option value ="${film.id}" >${film.naziv}</option>`);
+                }
+            })
+        }
+        function dodajVezuKlik(e) {
+            e.preventDefault();
+            $.post("bioskopi.php", {
+                metoda: "dodajVezu",
+                bioskop: $("#izabraniBioskop").val(),
+                film: $("#komboSaFilmovima").val(),
+                brojProjekcija: $("#brojProjekcija").val()
+            }, function (data) {
+                if (data !== "ok") {
+                    alert(data);
+                }
+                prikaziFilmove($("#izabraniBioskop").val());
+            })
+        }
+        function obrisiVezu(bioskop, film) {
+            $.post("bioskopi.php", {
+                metoda: "obrisiVezu",
+                bioskop: bioskop,
+                film: film
+            }, function (data) {
+                if (data !== "ok") {
+                    alert(data);
+                }
+                prikaziFilmove($("#izabraniBioskop").val());
+            })
+        }
+    </script>
+</body>
+
+</html>
